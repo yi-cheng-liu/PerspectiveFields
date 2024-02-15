@@ -201,7 +201,6 @@ def eval_by_idx(cfg, demo, dataset, idx):
         avg_lati_err_deg = mat_lati_err_deg.numpy()[mask].mean()
         med_lati_err_deg = np.median(mat_lati_err_deg.numpy()[mask])
     else:
-        breakpoint()
         raise NotImplementedError
     rtn = {
         "pred_gravity_original": predictions["pred_gravity_original"].cpu().numpy(),

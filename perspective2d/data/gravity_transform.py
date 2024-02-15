@@ -54,6 +54,20 @@ class GravityTransform:
             "objectron",
             "gsv",
             "edina",
+            
+            # ETH3D
+            "botanical_garden_test",
+            "boulders_test",
+            "bridge_test",
+            "door_test",
+            "exhibition_hall_test",
+            "lecture_room_test",
+            "living_room_test", 
+            "lounge_test",
+            "observatory_test",
+            "old_computer_test",
+            "statue_test",
+            "terrace_2_test",
         ]:
             r = dataset_dict["roll"]
             p = dataset_dict["pitch"]
