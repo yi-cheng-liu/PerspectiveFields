@@ -30,4 +30,11 @@
 # python demo/demo.py --config-file models/paramnet_360cities_edina_rpf.yaml --input datasets/eth3d/terrace_2/images/dslr_images/DSC_1465.JPG --output output/eth3d/terrace_2/ --opts MODEL.WEIGHTS models/paramnet_360cities_edina_rpf.pth
 # python demo/demo.py --config-file models/paramnet_360cities_edina_rpf.yaml --input datasets/eth3d/terrace_2/images/dslr_images/DSC_1468.JPG --output output/eth3d/terrace_2/ --opts MODEL.WEIGHTS models/paramnet_360cities_edina_rpf.pth
 
+python demo/demo.py --config-file models/paramnet_360cities_edina_rpf.yaml --input datasets/eth3d/botanical_garden/images/dslr_images/DSC_0848.JPG --output output/eth3d/botanical_garden/ --opts MODEL.WEIGHTS models/paramnet_360cities_edina_rpf.pth
+python demo/demo.py --config-file models/paramnet_360cities_edina_rpf.yaml --input datasets/eth3d/botanical_garden/images/dslr_images/DSC_0853.JPG --output output/eth3d/botanical_garden/ --opts MODEL.WEIGHTS models/paramnet_360cities_edina_rpf.pth
+python demo/demo.py --config-file models/paramnet_360cities_edina_rpf.yaml --input datasets/eth3d/botanical_garden/images/dslr_images/DSC_0873.JPG --output output/eth3d/botanical_garden/ --opts MODEL.WEIGHTS models/paramnet_360cities_edina_rpf.pth
+
+python demo/demo.py --config-file models/paramnet_360cities_edina_rpf.yaml --input datasets/eth3d/living_room/images/dslr_images/DSC_1556.JPG --output output/eth3d/living_room/ --opts MODEL.WEIGHTS models/paramnet_360cities_edina_rpf.pth
+python demo/demo.py --config-file models/paramnet_360cities_edina_rpf.yaml --input datasets/eth3d/living_room/images/dslr_images/DSC_1569.JPG --output output/eth3d/living_room/ --opts MODEL.WEIGHTS models/paramnet_360cities_edina_rpf.pth
+python demo/demo.py --config-file models/paramnet_360cities_edina_rpf.yaml --input datasets/eth3d/living_room/images/dslr_images/DSC_1573.JPG --output output/eth3d/living_room/ --opts MODEL.WEIGHTS models/paramnet_360cities_edina_rpf.pth
 

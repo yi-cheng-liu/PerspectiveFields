@@ -20,7 +20,7 @@ def load_eth3d_json(json_file, img_root):
             img_root, item["file_name"]
         )
         if "dataset" not in item.keys():
-            item["dataset"] = "livingroom"
+            item["dataset"] = "eth3d"
         item["mask_on"] = False
 
         if "latitude_file_name" in item.keys():

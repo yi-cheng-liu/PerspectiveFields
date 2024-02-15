@@ -94,7 +94,7 @@ SPLITS_CITIES360 = {
 SPLITS_ETH3D = {
     "botanical_garden_test": (
         "./datasets/eth3d/botanical_garden/images",
-        "./datasets/eth3d/botanical_garden/botanical_garden_test.json"
+        "./datasets/eth3d/botanical_garden/test.json"
     ),
     "boulders_test": (
         "./datasets/eth3d/boulders/images",
