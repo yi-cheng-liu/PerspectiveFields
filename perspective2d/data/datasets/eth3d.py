@@ -31,7 +31,6 @@ def load_eth3d_json(json_file, img_root):
             item["gravity_file_name"] = os.path.join(
                 img_root, item["gravity_file_name"]
             )
-    breakpoint()
         
     logger.info(f"{os.path.basename(json_file)}: Loaded {len(summary['data'])} entries.")
     return summary["data"]
