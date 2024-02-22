@@ -1,9 +1,12 @@
 import json
 import math
 import os
+from scipy.spatial.transform import Rotation as R
+import numpy as np
 
 M_PI = math.pi
 
+# Camera parameters
 def read_camera_params(camera_file_path): 
     with open(camera_file_path, 'r') as file:
         # skip the first 3 lines
@@ -28,27 +31,37 @@ def calculate_vfov(fy, height):
     
     return math.degrees(vfov_rad)
 
-def quaternion_to_rpy(qw, qx, qy, qz):
-    roll = math.atan2(2.0 * (qw * qx + qy * qz), 
-                      1.0 - 2.0 * (qx**2 + qy**2))
-    pitch = 2.0 * math.atan2(math.sqrt(1.0 + 2.0 * (qw * qy - qx * qz)), 
-                             math.sqrt(1.0 - 2.0 * (qw * qy - qx * qz))) - M_PI / 2.0
-    # pitch = math.asin(2.0 * (qw * qy - qx * qz))
-    yaw = math.atan2(2.0 * (qw * qz + qx * qy), 
-                     1.0 - 2.0 * (qy**2 + qz**2))
-
-    roll_deg = math.degrees(roll)
-    pitch_deg = math.degrees(pitch)
-    yaw_deg = math.degrees(yaw)
+def adjust_pose(data_list):
+    first_frame_pose = data_list[0]
+    first_frame_rot_inv = R.from_quat([first_frame_pose['qx'], first_frame_pose['qy'], first_frame_pose['qz'], first_frame_pose['qw']]).inv()
+    first_frame_trans_inv = np.array([first_frame_pose['tx'], first_frame_pose['ty'], first_frame_pose['tz']]) * -1
     
-    return roll_deg, pitch_deg, yaw_deg
-    return roll, pitch, yaw
+    for item in data_list:
+        # Rotation
+        current_rot = R.from_quat([item['qx'], item['qy'], item['qz'], item['qw']])
+        adjusted_rot = first_frame_rot_inv * current_rot
+        qx, qy, qz, qw = adjusted_rot.as_quat()
+        
+        # Translation
+        current_trans = np.array([item['tx'], item['ty'], item['tz']])
+        adjusted_trans = first_frame_trans_inv + current_trans
+        tx, ty, tz = adjusted_trans
 
-def process_images_folder(input_file_path, output_json_path, folder_name, camera_params): 
+        rot = R.from_quat([qx, qy, qz, qw])
+        roll, pitch, yaw = rot.as_euler('zyx')
+        item.update({
+            "qw": qw, "qx": qx, "qy": qy, "qz": qz,
+            "tx": tx, "ty": ty, "tz": tz,
+            "roll": roll, "pitch": pitch, "yaw": yaw
+        })
+
+def process_images_folder(input_file_path, output_json_path, folder_name, camera_params):
     data_list = []
+
     with open(input_file_path, 'r') as file:
         for _ in range(4):
             next(file)
+        i = None
 
         while True:
             line = file.readline()
@@ -59,7 +72,9 @@ def process_images_folder(input_file_path, output_json_path, folder_name, camera
                 image_id, qw, qx, qy, qz, tx, ty, tz, camera_id, name = parts
                 qw, qx, qy, qz, tx, ty, tz = map(float, (qw, qx, qy, qz, tx, ty, tz))
 
-                roll, pitch, yaw = quaternion_to_rpy(qw, qx, qy, qz)
+                rot = R.from_quat([qx, qy, qz, qw])
+                # roll, pitch, yaw(z, y, x)
+                roll, pitch, yaw = rot.as_euler('zyx')
                 
                 fy = camera_params["PARAMS"][1]
                 height = camera_params["HEIGHT"]
@@ -85,8 +100,13 @@ def process_images_folder(input_file_path, output_json_path, folder_name, camera
                 }
 
                 data_list.append(line_dict)
-                file.readline()
 
+    # Sort Data list
+    data_list.sort(key=lambda x: x['file_name'])
+    
+    # Adjust pose
+    adjust_pose(data_list)
+    
     output_dict = {
         "data": data_list
     }
