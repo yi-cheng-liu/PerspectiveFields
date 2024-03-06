@@ -32,6 +32,10 @@ def calculate_vfov(fy, height):
     return math.degrees(vfov_rad)
 
 def adjust_pose(data_list):
+    given_roll = 0.08650845289230347
+    given_pitch = -3.5645244121551514
+    given_rot = R.from_euler('zyx', [given_roll, given_pitch, 0], degrees=True)
+    
     first_frame_pose = data_list[0]
     first_frame_rot_inv = R.from_quat([first_frame_pose['qx'], first_frame_pose['qy'], first_frame_pose['qz'], first_frame_pose['qw']]).inv()
     first_frame_trans_inv = np.array([first_frame_pose['tx'], first_frame_pose['ty'], first_frame_pose['tz']]) * -1
@@ -39,16 +43,17 @@ def adjust_pose(data_list):
     for item in data_list:
         # Rotation
         current_rot = R.from_quat([item['qx'], item['qy'], item['qz'], item['qw']])
-        adjusted_rot = first_frame_rot_inv * current_rot
+        adjusted_rot = np.dot(given_rot, np.dot(first_frame_rot_inv, current_rot))
+        # adjusted_rot = np.dot(first_frame_rot_inv, current_rot)
         qx, qy, qz, qw = adjusted_rot.as_quat()
+        rot = R.from_quat([qx, qy, qz, qw])
+        roll, pitch, yaw = rot.as_euler('zyx', degrees=True)
         
         # Translation
         current_trans = np.array([item['tx'], item['ty'], item['tz']])
         adjusted_trans = first_frame_trans_inv + current_trans
         tx, ty, tz = adjusted_trans
 
-        rot = R.from_quat([qx, qy, qz, qw])
-        roll, pitch, yaw = rot.as_euler('zyx')
         item.update({
             "qw": qw, "qx": qx, "qy": qy, "qz": qz,
             "tx": tx, "ty": ty, "tz": tz,
@@ -74,7 +79,7 @@ def process_images_folder(input_file_path, output_json_path, folder_name, camera
 
                 rot = R.from_quat([qx, qy, qz, qw])
                 # roll, pitch, yaw(z, y, x)
-                roll, pitch, yaw = rot.as_euler('zyx')
+                roll, pitch, yaw = rot.as_euler('zyx', degrees=True)
                 
                 fy = camera_params["PARAMS"][1]
                 height = camera_params["HEIGHT"]
