@@ -4,7 +4,6 @@ import seaborn as sns
 import json
 import glob
 
-# File paths
 file_paths = glob.glob('*/test.json')
 
 combined_data = []

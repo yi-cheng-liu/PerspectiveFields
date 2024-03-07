@@ -24,5 +24,6 @@ datasets/gsv/gsv_test_crop_uniform
 datasets/eth3d/*/images
 datasets/eth3d/multi_view_test_dslr_jpg.7z
 
+output/
 
 exp/
