@@ -49,25 +49,24 @@ class ImageProcessor:
         return math.degrees(vfov_rad)
     
     def adjust_pose(self, data_list):
-        given_rot = R.from_euler('zyx', [self.roll, self.pitch, 0], degrees=True)
+        given_rot = R.from_quat(R.from_euler('zxy', [self.roll, self.pitch, 0], degrees=True).as_quat())
         
         first_frame_pose = data_list[0]
         first_frame_rot_inv = R.from_quat([first_frame_pose['qx'], first_frame_pose['qy'], first_frame_pose['qz'], first_frame_pose['qw']]).inv()
-        first_frame_trans_inv = np.array([first_frame_pose['tx'], first_frame_pose['ty'], first_frame_pose['tz']]) * -1
+        first_frame_trans_inv = np.array([first_frame_pose['tx'], first_frame_pose['ty'], first_frame_pose['tz']])
         
-        for item in data_list:
+        for i, item in enumerate(data_list):
             # Rotation
             current_rot = R.from_quat([item['qx'], item['qy'], item['qz'], item['qw']])
-            adjusted_rot = np.dot(given_rot, np.dot(first_frame_rot_inv, current_rot))
-            # adjusted_rot = np.dot(first_frame_rot_inv, current_rot)
+            adjusted_rot = current_rot * first_frame_rot_inv * given_rot
             qx, qy, qz, qw = adjusted_rot.as_quat()
-            rot = R.from_quat([qx, qy, qz, qw])
-            roll, pitch, yaw = rot.as_euler('zyx', degrees=True)
+            
+            # rot = R.from_quat([qx, qy, qz, qw])
+            roll, pitch, yaw = adjusted_rot.as_euler('zxy', degrees=True)
             
             # Translation
             current_trans = np.array([item['tx'], item['ty'], item['tz']])
-            adjusted_trans = first_frame_trans_inv + current_trans
-            tx, ty, tz = adjusted_trans
+            tx, ty, tz = current_trans
 
             item.update({
                 "qw": qw, "qx": qx, "qy": qy, "qz": qz,
@@ -75,7 +74,7 @@ class ImageProcessor:
                 "roll": roll, "pitch": pitch, "yaw": yaw
             })
 
-    def process_images_folder(self, input_file_path, output_json_path, folder_name, camera_params):
+    def process_images_folder(self, input_file_path, output_json_path, output_txt_path, folder_name, camera_params):
         data_list = []
 
         with open(input_file_path, 'r') as file:
@@ -127,12 +126,18 @@ class ImageProcessor:
         # Adjust pose
         self.adjust_pose(data_list)
         
-        output_dict = {
-            "data": data_list
-        }
-
+        # Output to JSON format
+        output_dict = {"data": data_list}
         with open(output_json_path, 'w') as json_file:
             json.dump(output_dict, json_file, indent=4)
+            
+        # Output to txt in COLMAP format
+        with open(output_txt_path, 'w') as txt_file:
+            txt_file.write("# IMAGE_ID, QW, QX, QY, QZ, TX, TY, TZ, CAMERA_ID, NAME\n")
+            for item in data_list:
+                txt_line = f"{item['image_id']} {item['qw']} {item['qx']} {item['qy']} {item['qz']} {item['tx']} {item['ty']} {item['tz']} 0 {item['file_name']}\n"
+                txt_file.write(txt_line)
+                txt_file.write("placeholder\n")
 
 if __name__ == '__main__':
     mp.set_start_method("spawn", force=True)
@@ -151,8 +156,8 @@ if __name__ == '__main__':
         # Inference the first image in the folder
         images_path = os.path.join(folder_name, 'images/dslr_images_resized')
         image_files = glob.glob(os.path.join(images_path, "*.JPG"))
-        if image_files:  # Ensure there is at least one image
-            args.input = [sorted(image_files)[0]]  # Take the first image after sorting
+        if image_files:
+            args.input = [sorted(image_files)[0]]
         else:
             logger.warning(f"No images found in {images_path}")
             continue
@@ -167,7 +172,6 @@ if __name__ == '__main__':
             print("pitch: ", pred['pred_pitch'].item())
             print("vfov: ", pred['pred_vfov'].item())
         
-        # Update instance attributes with the latest prediction
         image_processor.roll = pred['pred_roll'].item()
         image_processor.pitch = pred['pred_pitch'].item()
         image_processor.vfov = pred['pred_vfov'].item()
@@ -179,4 +183,5 @@ if __name__ == '__main__':
         # Process Image
         input_file_path = os.path.join(folder_name, 'dslr_calibration_jpg/images.txt')
         output_json_path = os.path.join(folder_name, 'test.json')
-        image_processor.process_images_folder(input_file_path, output_json_path, os.path.basename(folder_name), camera_params)
+        output_txt_path = os.path.join(folder_name, 'images.txt')
+        image_processor.process_images_folder(input_file_path, output_json_path, output_txt_path, os.path.basename(folder_name), camera_params)
