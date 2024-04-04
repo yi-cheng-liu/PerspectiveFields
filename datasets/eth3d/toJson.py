@@ -9,6 +9,8 @@ import tqdm
 from detectron2.data.detection_utils import read_image
 from pathlib import Path
 from importlib import util
+from perspective2d.utils import draw_from_r_p_f
+import cv2
 root_dir = Path(__file__).parents[2]
 module_path = root_dir / 'demo' / 'demo.py'
 spec = util.spec_from_file_location("demo.demo", module_path)
@@ -48,12 +50,11 @@ class ImageProcessor:
         vfov_rad = 2 * math.atan((height / 2) / fy)
         return math.degrees(vfov_rad)
     
-    def adjust_pose(self, data_list):
-        given_rot = R.from_quat(R.from_euler('zxy', [self.roll, self.pitch, 0], degrees=True).as_quat())
+    def adjust_pose(self, data_list, axis_order='ZXY'):
+        given_rot = R.from_quat(R.from_euler(axis_order, [self.roll, self.pitch, 0], degrees=True).as_quat())
         
         first_frame_pose = data_list[0]
         first_frame_rot_inv = R.from_quat([first_frame_pose['qx'], first_frame_pose['qy'], first_frame_pose['qz'], first_frame_pose['qw']]).inv()
-        first_frame_trans_inv = np.array([first_frame_pose['tx'], first_frame_pose['ty'], first_frame_pose['tz']])
         
         for i, item in enumerate(data_list):
             # Rotation
@@ -61,8 +62,10 @@ class ImageProcessor:
             adjusted_rot = current_rot * first_frame_rot_inv * given_rot
             qx, qy, qz, qw = adjusted_rot.as_quat()
             
-            # rot = R.from_quat([qx, qy, qz, qw])
-            roll, pitch, yaw = adjusted_rot.as_euler('zxy', degrees=True)
+            roll, pitch, yaw = adjusted_rot.as_euler(axis_order, degrees=True)
+            
+            if i != 0:
+                roll, pitch, yaw = -roll, -pitch, -yaw
             
             # Translation
             current_trans = np.array([item['tx'], item['ty'], item['tz']])
@@ -74,7 +77,7 @@ class ImageProcessor:
                 "roll": roll, "pitch": pitch, "yaw": yaw
             })
 
-    def process_images_folder(self, input_file_path, output_json_path, output_txt_path, folder_name, camera_params):
+    def process_images_folder(self, input_file_path, output_json_path, output_txt_path, folder_name, camera_params, args, axis_order='ZXY'):
         data_list = []
 
         with open(input_file_path, 'r') as file:
@@ -92,8 +95,8 @@ class ImageProcessor:
                     qw, qx, qy, qz, tx, ty, tz = map(float, (qw, qx, qy, qz, tx, ty, tz))
 
                     rot = R.from_quat([qx, qy, qz, qw])
-                    # roll, pitch, yaw(z, y, x)
-                    roll, pitch, yaw = rot.as_euler('zyx', degrees=True)
+                    # roll, pitch, yaw(z, x, y)
+                    roll, pitch, yaw = rot.as_euler(axis_order, degrees=True)
                     
                     fy = camera_params["PARAMS"][1]
                     height = camera_params["HEIGHT"]
@@ -124,7 +127,16 @@ class ImageProcessor:
         data_list.sort(key=lambda x: x['file_name'])
         
         # Adjust pose
-        self.adjust_pose(data_list)
+        self.adjust_pose(data_list, axis_order)
+        
+        # Draw visualization result
+        for i, path in enumerate(tqdm.tqdm(args.input[0], disable=not args.output)):
+            img = read_image(path, format="BGR")
+            img = draw_from_r_p_f(img, data_list[i]['roll'], data_list[i]['pitch'], data_list[i]['vfov'], mode='deg', up_color=(0, 1, 0, 1))
+            output_f = os.path.join(args.output, os.path.basename(folder_name), os.path.basename(path).split(".")[0])
+            if args.output:
+                os.makedirs(output_f, exist_ok=True)
+                cv2.imwrite(os.path.join(output_f, "param_pred.png"), img[:, :, ::-1])
         
         # Output to JSON format
         output_dict = {"data": data_list}
@@ -146,32 +158,38 @@ if __name__ == '__main__':
     logger = demo.setup_logger()
     logger.info("Arguments: " + str(args))
     
+    base = Path(os.getcwd()) / 'datasets' / 'eth3d'
+    include_dirs = ['exhibition_hall', 'living_room', 'botanical_garden', 'boulders', 'bridge', 'lecture_room', 'lounge', 'old_computer', 'terrace_2']
+    subdirectories = [os.path.join(base, d) for d in os.listdir(base) if os.path.isdir(os.path.join(base, d)) and d in include_dirs]
+
+    cfg_list = demo.setup_cfg(args)
+    demo_instance = demo.VisualizationDemo(cfg_list=cfg_list)
     image_processor = ImageProcessor(demo)
     
-    base = Path(os.getcwd()) / 'datasets' / 'eth3d'
-    subdirectories = [os.path.join(base, d) for d in os.listdir(base) if os.path.isdir(os.path.join(base, d))]
-
     for folder_name in subdirectories:
         print("===========", folder_name, "===========")
         # Inference the first image in the folder
         images_path = os.path.join(folder_name, 'images/dslr_images_resized')
         image_files = glob.glob(os.path.join(images_path, "*.JPG"))
         if image_files:
-            args.input = [sorted(image_files)[0]]
+            args.input = [sorted(image_files)]
+            first_image_path = args.input[0][0]
         else:
             logger.warning(f"No images found in {images_path}")
             continue
         
-        cfg_list = demo.setup_cfg(args)
-        demo_instance = demo.VisualizationDemo(cfg_list=cfg_list)
-        
-        for path in tqdm.tqdm(args.input, disable=not args.output):
-            img = read_image(path, format="BGR")
-            pred = demo_instance.run_on_image(img)
-            print("roll: ", pred['pred_roll'].item())
-            print("pitch: ", pred['pred_pitch'].item())
-            print("vfov: ", pred['pred_vfov'].item())
-        
+        # Inference the first image in the folder
+        img = read_image(first_image_path, format="BGR")
+        pred = demo_instance.run_on_image(img)
+        print("roll: ", pred['pred_roll'].item())
+        print("pitch: ", pred['pred_pitch'].item())
+        print("vfov: ", pred['pred_vfov'].item())
+        # output_f = os.path.join(args.output, os.path.basename(folder_name), os.path.basename(path).split(".")[0])
+        # print(output_f)
+        # if args.output:
+        #     os.makedirs(output_f, exist_ok=True)
+        #     demo.save_vis(demo_instance, img, pred, output_folder=output_f)
+        # Store the first inference in the image processor object
         image_processor.roll = pred['pred_roll'].item()
         image_processor.pitch = pred['pred_pitch'].item()
         image_processor.vfov = pred['pred_vfov'].item()
@@ -181,7 +199,22 @@ if __name__ == '__main__':
         camera_params = image_processor.read_camera_params(camera_file_path)
         
         # Process Image
-        input_file_path = os.path.join(folder_name, 'dslr_calibration_jpg/images.txt')
-        output_json_path = os.path.join(folder_name, 'test.json')
-        output_txt_path = os.path.join(folder_name, 'images.txt')
-        image_processor.process_images_folder(input_file_path, output_json_path, output_txt_path, os.path.basename(folder_name), camera_params)
+        # axis_list = [
+        #     'xyz', 'xzy', 'yxz', 'yzx', 'zyx', 'zxy', 
+        #     'XYZ', 'XZY', 'YXZ', 'YZX', 'ZYX', 'ZXY',
+        #     'xyx', 'xzx', 'yxy', 'yzy', 'zxz', 'zyz',
+        #     'XYX', 'XZX', 'YXY', 'YZY', 'ZXZ', 'ZYZ'
+        # ]
+        axis_list = ['ZXY']
+
+        for axis_order in axis_list:
+            print("===========", axis_order, "===========")
+            input_file_path = os.path.join(folder_name, 'dslr_calibration_jpg/images.txt')
+            output_json_path = os.path.join(folder_name, f'test_{axis_order}.json')
+            output_txt_path = os.path.join(folder_name, f'images.txt')
+            image_processor.process_images_folder(input_file_path, output_json_path, output_txt_path, os.path.basename(folder_name), camera_params, args, axis_order)
+            
+        # input_file_path = os.path.join(folder_name, 'dslr_calibration_jpg/images.txt')
+        # output_json_path = os.path.join(folder_name, f'original.json')
+        # output_txt_path = os.path.join(folder_name, f'images.txt')
+        # image_processor.process_images_folder(input_file_path, output_json_path, output_txt_path, os.path.basename(folder_name), camera_params, args, axis_order='ZXY')

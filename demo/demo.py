@@ -338,12 +338,6 @@ def save_vis(demo, img, pred, output_folder):
     pred_cx = f"cx: {pred['pred_rel_cx'].item() :.2f}"
     pred_cy = f"cy: {pred['pred_rel_cy'].item() :.2f}"
 
-    print("roll: ", pred['pred_roll'].item())
-    print("pitch: ", pred['pred_pitch'].item())
-    print("vfov: ", pred['pred_general_vfov'].item())
-    print("cx: ", pred['pred_rel_cx'].item())
-    print("cy: ", pred['pred_rel_cy'].item())
-
     # Write parameter predictions on the visualization
     font = cv2.FONT_HERSHEY_SIMPLEX
     font_scale = 0.75

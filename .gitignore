@@ -25,5 +25,6 @@ datasets/eth3d/*/images
 datasets/eth3d/multi_view_test_dslr_jpg.7z
 
 output/
+output2/
 
 exp/
