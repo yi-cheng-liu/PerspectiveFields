@@ -5,7 +5,7 @@ import json
 image_base_dir = 'datasets/eth3d'
 output_base_dir = 'output/eth3d'
 output_base_dir_2 = 'output2/eth3d'
-ignored_folders = ['Pattern', 'observatory', 'door', 'statue']#, 'botanical_garden', 'boulders', 'bridge', 'lecture_room', 'lounge', 'old_computer', 'terrace_2', 'living_room']
+ignored_folders = ['Pattern', 'observatory', 'door', 'statue', 'lecture_room', 'living_room', 'lounge', 'old_computer']#, 'botanical_garden', 'bridge', 'terrace_2'], 'boulders'
 subdirectories = [d for d in os.listdir(image_base_dir) if os.path.isdir(os.path.join(image_base_dir, d)) and d not in ignored_folders]
 subdirectories = sorted(subdirectories)
 

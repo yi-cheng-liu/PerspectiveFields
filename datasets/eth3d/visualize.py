@@ -47,7 +47,6 @@ def pattern(file_paths):
         # Scene name
         scene = os.path.basename(os.path.dirname(file_path))
         output_folder = os.path.join(base_output_folder, scene)
-        
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
         
@@ -82,6 +81,5 @@ def pattern(file_paths):
             plt.close()
 
 if __name__ == '__main__':
-    file_paths = glob.glob('exhibition_hall/*.json')
-    # file_paths = glob.glob('living_room/*.json')
+    file_paths = glob.glob('*/test_ZXY.json') + glob.glob('*/original.json')
     pattern(file_paths)

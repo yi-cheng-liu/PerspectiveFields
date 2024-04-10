@@ -7,7 +7,7 @@ subdirectories = [os.path.join(base, d) for d in os.listdir(base) if os.path.isd
 
 new_size = (640, 480)
 for folder_name in subdirectories:
-    image_path = os.path.join(folder_name, 'images/dslr_images')
+    image_path = os.path.join(folder_name, 'images/dslr_images_undistorted')
     target_path = os.path.join(folder_name, 'images/dslr_images_resized')
 
     if os.path.exists(image_path):  # Ensure the source directory exists before proceeding

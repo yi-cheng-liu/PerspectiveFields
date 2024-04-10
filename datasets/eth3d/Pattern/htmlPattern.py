@@ -15,10 +15,10 @@ for scene_folder in os.listdir(base_folder):
         continue
     
     cols.extend([
-        Col('img', scene_folder, f'{scene_folder}/original_pattern.png'),
+        Col('img', scene_folder, f'{scene_folder}/*_pattern.png'),
         # Col('img', scene_folder, f'{scene_folder}/test_ZXY_pattern.png'),
     ])
     
 
-imagetable(cols, imsize=(320, 240), sortable=True, out_file='index.html',
+imagetable(cols, imsize=(640, 480), sortable=True, out_file='index.html',
             sticky_header=True, sort_style='materialize', zebra=True)

@@ -159,7 +159,13 @@ if __name__ == '__main__':
     logger.info("Arguments: " + str(args))
     
     base = Path(os.getcwd()) / 'datasets' / 'eth3d'
-    include_dirs = ['exhibition_hall', 'living_room', 'botanical_garden', 'boulders', 'bridge', 'lecture_room', 'lounge', 'old_computer', 'terrace_2']
+    include_dirs = [
+        'botanical_garden', 'courtyard', 'delivery_area', 'door', 'electro', 
+        'exhibition_hall', 'facade', 'kicker', 'lecture_room', 'living_room', 
+        'lounge', 'meadow', 'observatory', 'office', 'old_computer', 
+        'pipes', 'playground', 'relief', 'relief_2', 'statue', 'terrace', 
+        'terrace_2', 'terrains'
+    ]
     subdirectories = [os.path.join(base, d) for d in os.listdir(base) if os.path.isdir(os.path.join(base, d)) and d in include_dirs]
 
     cfg_list = demo.setup_cfg(args)
@@ -184,37 +190,25 @@ if __name__ == '__main__':
         print("roll: ", pred['pred_roll'].item())
         print("pitch: ", pred['pred_pitch'].item())
         print("vfov: ", pred['pred_vfov'].item())
-        # output_f = os.path.join(args.output, os.path.basename(folder_name), os.path.basename(path).split(".")[0])
-        # print(output_f)
-        # if args.output:
-        #     os.makedirs(output_f, exist_ok=True)
-        #     demo.save_vis(demo_instance, img, pred, output_folder=output_f)
-        # Store the first inference in the image processor object
         image_processor.roll = pred['pred_roll'].item()
         image_processor.pitch = pred['pred_pitch'].item()
         image_processor.vfov = pred['pred_vfov'].item()
         
         # Read camera parameters
-        camera_file_path = os.path.join(folder_name, 'dslr_calibration_jpg/cameras.txt')
+        camera_file_path = os.path.join(folder_name, 'dslr_calibration_undistorted/cameras.txt')
         camera_params = image_processor.read_camera_params(camera_file_path)
         
         # Process Image
-        # axis_list = [
-        #     'xyz', 'xzy', 'yxz', 'yzx', 'zyx', 'zxy', 
-        #     'XYZ', 'XZY', 'YXZ', 'YZX', 'ZYX', 'ZXY',
-        #     'xyx', 'xzx', 'yxy', 'yzy', 'zxz', 'zyz',
-        #     'XYX', 'XZX', 'YXY', 'YZY', 'ZXZ', 'ZYZ'
-        # ]
-        axis_list = ['ZXY']
+        # axis_list = ['ZXY']
 
-        for axis_order in axis_list:
-            print("===========", axis_order, "===========")
-            input_file_path = os.path.join(folder_name, 'dslr_calibration_jpg/images.txt')
-            output_json_path = os.path.join(folder_name, f'test_{axis_order}.json')
-            output_txt_path = os.path.join(folder_name, f'images.txt')
-            image_processor.process_images_folder(input_file_path, output_json_path, output_txt_path, os.path.basename(folder_name), camera_params, args, axis_order)
+        # for axis_order in axis_list:
+        #     print("===========", axis_order, "===========")
+        #     input_file_path = os.path.join(folder_name, 'dslr_calibration_undistorted/images.txt')
+        #     output_json_path = os.path.join(folder_name, f'test_{axis_order}.json')
+        #     output_txt_path = os.path.join(folder_name, f'images.txt')
+        #     image_processor.process_images_folder(input_file_path, output_json_path, output_txt_path, os.path.basename(folder_name), camera_params, args, axis_order)
             
-        # input_file_path = os.path.join(folder_name, 'dslr_calibration_jpg/images.txt')
-        # output_json_path = os.path.join(folder_name, f'original.json')
-        # output_txt_path = os.path.join(folder_name, f'images.txt')
-        # image_processor.process_images_folder(input_file_path, output_json_path, output_txt_path, os.path.basename(folder_name), camera_params, args, axis_order='ZXY')
+        input_file_path = os.path.join(folder_name, 'dslr_calibration_undistorted/images.txt')
+        output_json_path = os.path.join(folder_name, f'test_ZXY.json')
+        output_txt_path = os.path.join(folder_name, f'images.txt')
+        image_processor.process_images_folder(input_file_path, output_json_path, output_txt_path, os.path.basename(folder_name), camera_params, args, axis_order='ZXY')
