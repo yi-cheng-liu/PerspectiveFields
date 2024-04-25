@@ -6,22 +6,15 @@ import numpy as np
 import multiprocessing as mp
 import glob
 import tqdm
-from detectron2.data.detection_utils import read_image
 from pathlib import Path
 from importlib import util
+from perspective2d import PerspectiveFields
 from perspective2d.utils import draw_from_r_p_f
 import cv2
-root_dir = Path(__file__).parents[2]
-module_path = root_dir / 'demo' / 'demo.py'
-spec = util.spec_from_file_location("demo.demo", module_path)
-demo = util.module_from_spec(spec)
-spec.loader.exec_module(demo)
-
 
 class ImageProcessor:
-    def __init__(self, demo_module):
+    def __init__(self):
         self.M_PI = math.pi
-        self.demo = demo_module
         self.roll = 0
         self.pitch = 0
         self.vfov = 0
@@ -77,7 +70,7 @@ class ImageProcessor:
                 "roll": roll, "pitch": pitch, "yaw": yaw
             })
 
-    def process_images_folder(self, input_file_path, output_json_path, output_txt_path, folder_name, camera_params, args, axis_order='ZXY'):
+    def process_images_folder(self, input_file_path, output_json_path, output_txt_path, folder_name, camera_params, image_files, axis_order='ZXY'):
         data_list = []
 
         with open(input_file_path, 'r') as file:
@@ -130,11 +123,12 @@ class ImageProcessor:
         self.adjust_pose(data_list, axis_order)
         
         # Draw visualization result
-        for i, path in enumerate(tqdm.tqdm(args.input[0], disable=not args.output)):
-            img = read_image(path, format="BGR")
+        output = 'output'
+        for i, path in enumerate(tqdm.tqdm(image_files, disable=not output)):
+            img = cv2.imread(path)
             img = draw_from_r_p_f(img, data_list[i]['roll'], data_list[i]['pitch'], data_list[i]['vfov'], mode='deg', up_color=(0, 1, 0, 1))
-            output_f = os.path.join(args.output, os.path.basename(folder_name), os.path.basename(path).split(".")[0])
-            if args.output:
+            output_f = os.path.join(output, os.path.basename(folder_name), os.path.basename(path).split(".")[0])
+            if output:
                 os.makedirs(output_f, exist_ok=True)
                 cv2.imwrite(os.path.join(output_f, "param_pred.png"), img[:, :, ::-1])
         
@@ -152,13 +146,13 @@ class ImageProcessor:
                 txt_file.write("placeholder\n")
 
 if __name__ == '__main__':
-    mp.set_start_method("spawn", force=True)
-    args = demo.get_parser().parse_args()
-    demo.setup_logger(name="fvcore")
-    logger = demo.setup_logger()
-    logger.info("Arguments: " + str(args))
+    PerspectiveFields.versions()
+    version = 'Paramnet-360Cities-edina-centered'
+    pf_model = PerspectiveFields(version).eval().cuda()
     
-    base = Path(os.getcwd()) / 'datasets' / 'eth3d'
+    image_processor = ImageProcessor()
+    
+    base = 'datasets/eth3d'
     include_dirs = [
         'botanical_garden', 'courtyard', 'delivery_area', 'door', 'electro', 
         'exhibition_hall', 'facade', 'kicker', 'lecture_room', 'living_room', 
@@ -167,48 +161,26 @@ if __name__ == '__main__':
         'terrace_2', 'terrains'
     ]
     subdirectories = [os.path.join(base, d) for d in os.listdir(base) if os.path.isdir(os.path.join(base, d)) and d in include_dirs]
-
-    cfg_list = demo.setup_cfg(args)
-    demo_instance = demo.VisualizationDemo(cfg_list=cfg_list)
-    image_processor = ImageProcessor(demo)
     
     for folder_name in subdirectories:
         print("===========", folder_name, "===========")
         # Inference the first image in the folder
         images_path = os.path.join(folder_name, 'images/dslr_images_resized')
         image_files = glob.glob(os.path.join(images_path, "*.JPG"))
-        if image_files:
-            args.input = [sorted(image_files)]
-            first_image_path = args.input[0][0]
+        image_files = sorted(image_files)
+        first_image = cv2.imread(image_files[0])
+        if image_files[0]:
+            predictions = pf_model.inference_batch(img_bgr_list=[first_image])
+            first_image_path = image_files[0]
         else:
-            logger.warning(f"No images found in {images_path}")
+            print(f"No images found in {images_path}")
             continue
-        
-        # Inference the first image in the folder
-        img = read_image(first_image_path, format="BGR")
-        pred = demo_instance.run_on_image(img)
-        print("roll: ", pred['pred_roll'].item())
-        print("pitch: ", pred['pred_pitch'].item())
-        print("vfov: ", pred['pred_vfov'].item())
-        image_processor.roll = pred['pred_roll'].item()
-        image_processor.pitch = pred['pred_pitch'].item()
-        image_processor.vfov = pred['pred_vfov'].item()
         
         # Read camera parameters
         camera_file_path = os.path.join(folder_name, 'dslr_calibration_undistorted/cameras.txt')
         camera_params = image_processor.read_camera_params(camera_file_path)
         
-        # Process Image
-        # axis_list = ['ZXY']
-
-        # for axis_order in axis_list:
-        #     print("===========", axis_order, "===========")
-        #     input_file_path = os.path.join(folder_name, 'dslr_calibration_undistorted/images.txt')
-        #     output_json_path = os.path.join(folder_name, f'test_{axis_order}.json')
-        #     output_txt_path = os.path.join(folder_name, f'images.txt')
-        #     image_processor.process_images_folder(input_file_path, output_json_path, output_txt_path, os.path.basename(folder_name), camera_params, args, axis_order)
-            
         input_file_path = os.path.join(folder_name, 'dslr_calibration_undistorted/images.txt')
         output_json_path = os.path.join(folder_name, f'test_ZXY.json')
         output_txt_path = os.path.join(folder_name, f'images.txt')
-        image_processor.process_images_folder(input_file_path, output_json_path, output_txt_path, os.path.basename(folder_name), camera_params, args, axis_order='ZXY')
+        image_processor.process_images_folder(input_file_path, output_json_path, output_txt_path, os.path.basename(folder_name), camera_params, image_files, axis_order='ZXY')
