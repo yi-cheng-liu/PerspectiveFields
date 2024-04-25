@@ -17,7 +17,7 @@ datasets/tartanair-processed/tartanair_crop
 datasets/tartanair-processed/tartanair_warp
 datasets/tartanair-processed/test
 
-datasets/living_room
+datasets/gsv/*
 datasets/gsv/google_street_view_191210
 datasets/gsv/gsv_test_crop_uniform
 
